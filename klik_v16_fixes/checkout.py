@@ -20,8 +20,6 @@ itself.
 import frappe
 from klik_pos.api import sales_invoice as klik_sales_invoice
 
-KLIK_ERROR_TITLE = "Submit Invoice Error"
-
 
 @frappe.whitelist()
 def queue_sales_invoice(data):
@@ -37,15 +35,8 @@ def _rollback_on_failure(result):
 	if not (isinstance(result, dict) and result.get("success") is False and set(result) == {"success", "message"}):
 		return result
 
-	# KLiK logged the traceback inside the transaction we are about to discard.
-	traceback = frappe.get_all(
-		"Error Log", filters={"method": KLIK_ERROR_TITLE}, pluck="error", order_by="creation desc", limit=1
-	)
+	# KLiK's own "Submit Invoice Error" log entry survives the rollback (Frappe writes logs separately).
 	frappe.db.rollback()
 	# Messages queued during the failed submit (e.g. "Sales Invoice sent to ZATCA") describe work that no longer exists.
 	frappe.local.message_log = []
-	frappe.log_error(
-		title=f"{KLIK_ERROR_TITLE} (rolled back)",
-		message=traceback[0] if traceback else result.get("message"),
-	)
 	return result
