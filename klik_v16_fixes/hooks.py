@@ -8,7 +8,7 @@ app_license = "agpl-3.0"
 # Apps
 # ------------------
 
-# required_apps = []
+required_apps = ["klik_pos"]
 
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
@@ -226,12 +226,14 @@ app_license = "agpl-3.0"
 
 # Request Events
 # ----------------
-# before_request = ["klik_v16_fixes.utils.before_request"]
-# after_request = ["klik_v16_fixes.utils.after_request"]
+# Runtime fixes, installed once per process (see catalogue.py and pricing.py)
+before_request = ["klik_v16_fixes.catalogue.apply", "klik_v16_fixes.pricing.apply"]
+# Blind shift close script for the /klik_pos page (see blind_close.py)
+after_request = ["klik_v16_fixes.blind_close.inject_into_klik_page"]
 
 # Job Events
 # ----------
-# before_job = ["klik_v16_fixes.utils.before_job"]
+before_job = ["klik_v16_fixes.catalogue.apply", "klik_v16_fixes.pricing.apply"]
 # after_job = ["klik_v16_fixes.utils.after_job"]
 
 # User Data Protection
