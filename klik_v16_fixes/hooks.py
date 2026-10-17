@@ -204,9 +204,11 @@ required_apps = ["klik_pos"]
 # Overriding Methods
 # ------------------------------
 #
-# override_whitelisted_methods = {
-# 	"frappe.desk.doctype.event.event.get_events": "klik_v16_fixes.event.get_events"
-# }
+# Roll back a checkout that fails part-way through submit (see checkout.py)
+override_whitelisted_methods = {
+	"klik_pos.api.sales_invoice.queue_sales_invoice": "klik_v16_fixes.checkout.queue_sales_invoice",
+	"klik_pos.api.sales_invoice.create_and_submit_invoice": "klik_v16_fixes.checkout.create_and_submit_invoice",
+}
 #
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,
@@ -226,14 +228,14 @@ required_apps = ["klik_pos"]
 
 # Request Events
 # ----------------
-# Runtime fixes, installed once per process (see catalogue.py and pricing.py)
-before_request = ["klik_v16_fixes.catalogue.apply", "klik_v16_fixes.pricing.apply"]
+# Runtime fixes, installed once per process (see catalogue.py, pricing.py and closing.py)
+before_request = ["klik_v16_fixes.catalogue.apply", "klik_v16_fixes.pricing.apply", "klik_v16_fixes.closing.apply"]
 # Blind shift close script for the /klik_pos page (see blind_close.py)
 after_request = ["klik_v16_fixes.blind_close.inject_into_klik_page"]
 
 # Job Events
 # ----------
-before_job = ["klik_v16_fixes.catalogue.apply", "klik_v16_fixes.pricing.apply"]
+before_job = ["klik_v16_fixes.catalogue.apply", "klik_v16_fixes.pricing.apply", "klik_v16_fixes.closing.apply"]
 # after_job = ["klik_v16_fixes.utils.after_job"]
 
 # User Data Protection

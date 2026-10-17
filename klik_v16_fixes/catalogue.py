@@ -25,7 +25,10 @@ _PATCHED_FLAG = "_klik_v16_fixes_catalogue"
 
 
 def _parents_of(child_doctype):
-	cache = frappe.local.__dict__.setdefault("klik_v16_fixes_child_parents", {})
+	# frappe.local has no __dict__ (werkzeug Local uses __slots__), so keep the cache as an attribute.
+	cache = getattr(frappe.local, "klik_v16_fixes_child_parents", None)
+	if cache is None:
+		cache = frappe.local.klik_v16_fixes_child_parents = {}
 	if child_doctype not in cache:
 		filters = {"options": child_doctype, "fieldtype": ["in", ["Table", "Table MultiSelect"]]}
 		parents = set(frappe.get_all("DocField", filters=filters, pluck="parent"))
