@@ -19,7 +19,7 @@ from pathlib import Path
 
 import frappe
 
-SCRIPT = Path(__file__).resolve().parent / "public" / "js" / "klik_blind_close.js"
+SCRIPT = Path(__file__).resolve().parent / "public" / "js" / "blind_close.js"
 SCRIPT_URL = "/assets/klik_v16_fixes/js/blind_close.js"
 # Roles that keep seeing expected amounts and variance when closing.
 MANAGER_ROLES = {"System Manager", "Accounts Manager"}
