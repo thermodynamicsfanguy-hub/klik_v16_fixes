@@ -43,7 +43,10 @@ def before_validate(doc, method=None):
 	if still_owed:
 		doc.update_outstanding_for_self = 0
 
-	doc.calculate_taxes_and_totals()
+	# Cap before ERPNext recalculates: when a POS return's refund exceeds the
+	# return, taxes_and_totals.set_total_amount_to_default_mop() replaces the
+	# payment rows with the difference. KLiK has already set the totals here
+	# (partial returns recalculate, full returns copy the original's).
 	returned = abs(flt(doc.rounded_total) or flt(doc.grand_total))
 	_cap_refund(doc, returned - still_owed)
 
