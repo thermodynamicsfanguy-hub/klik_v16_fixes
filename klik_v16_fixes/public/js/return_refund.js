@@ -12,7 +12,9 @@
 	const TITLE = "Return Items";
 	const RENAME = { "Paid Amount:": "Cash refund:", "Write-off:": "Deducted from balance:" };
 	const NOTE_ATTR = "data-klik-v16-fixes-owed";
+	const TOAST = /^Return created successfully \((.+)\)$/;
 	const basis = {}; // invoice -> {owed, paid} | "loading"
+	let lastRefund = null; // {text, method} for the dialog this script last corrected
 
 	function amount(text) {
 		const m = (text || "").replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
@@ -50,7 +52,20 @@
 		input.dispatchEvent(new Event("input", { bubbles: true }));
 	}
 
+	function fixToast() {
+		// KLiK's success toast names the payment method even when nothing is refunded.
+		if (!lastRefund) return;
+		document.querySelectorAll(".Toastify__toast").forEach((toast) => {
+			const body = toast.querySelector(".Toastify__toast-body > div:last-child") || toast;
+			if (!TOAST.test(body.textContent.trim())) return;
+			body.textContent = lastRefund.zero
+				? "Return created: no cash refund, deducted from the customer's balance"
+				: "Return created: cash refund " + lastRefund.text + " (" + lastRefund.method + ")";
+		});
+	}
+
 	function apply() {
+		fixToast();
 		const dialog = findDialog();
 		if (!dialog) return;
 		const m = dialog.textContent.match(/Invoice:\s*([A-Za-z0-9-]+)/);
@@ -74,7 +89,11 @@
 			return;
 		}
 		const info = basis[invoice];
-		if (!info || info === "loading" || !(info.owed > 0)) return;
+		if (info === "loading") return;
+		if (!info || !(info.owed > 0)) {
+			lastRefund = null;
+			return;
+		}
 
 		const totalEl = returnedTotal(dialog);
 		const input = dialog.querySelector('input[type="number"][step="0.01"]');
@@ -82,7 +101,14 @@
 		const returned = amount(totalEl.textContent);
 		if (isNaN(returned)) return;
 
-		setInput(input, Math.max(Math.round((returned - info.owed) * 100) / 100, 0));
+		const refund = Math.max(Math.round((returned - info.owed) * 100) / 100, 0);
+		setInput(input, refund);
+		const method = dialog.querySelector("select");
+		lastRefund = {
+			zero: refund === 0,
+			text: money(totalEl.textContent.trim(), refund),
+			method: method ? method.value : "",
+		};
 
 		dialog.querySelectorAll("span").forEach((span) => {
 			const label = span.textContent.trim();
