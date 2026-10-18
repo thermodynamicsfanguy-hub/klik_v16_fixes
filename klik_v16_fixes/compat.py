@@ -119,6 +119,7 @@ PAGE_TEXT = {
 		"klik_pos_payment_entries_active_tab",
 	],
 	"credit_terms.js": ["Credit Sale Enabled", 'type:"date"', "beveren-cart-storage"],
+	"closing_expected.js": ["Close Shift", '"Expected"', '"Variance"', '"Counted"'],
 }
 
 BUNDLE_GLOB = ("klik_pos", "public", "klik_spa", "assets", "index-*.js")

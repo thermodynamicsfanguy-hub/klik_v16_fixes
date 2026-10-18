@@ -18,8 +18,14 @@ global at call time) with one that sums by shift: sales and returns from the
 invoices' Sales Invoice Payment rows linked to the shift, less change on the
 cash mode, plus the shift's customer receipts via KLiK's own
 _fetch_opening_payment_entry_data(). Payment Entries KLiK creates at checkout
-for B2B invoices carry no shift link, so nothing is counted twice. Remove once
-KLiK fixes it upstream.
+for B2B invoices carry no shift link, so nothing is counted twice.
+
+The Close Shift dialog has its own, separate figure: KLiK computes "Expected"
+in the browser from the shift's invoices, leaving out the opening float,
+change and collections. public/js/closing_expected.js replaces it, and the
+variance, with shift_expected() — the same calculation as the saved entry.
+Users under blind close get nothing from shift_expected(), so it cannot be
+used to see the target. Remove once KLiK fixes it upstream.
 """
 
 import frappe
@@ -82,6 +88,26 @@ def calculate_payment_reconciliation(opening_entry, data):
 			}
 		)
 	return rows
+
+
+@frappe.whitelist()
+def shift_expected():
+	"""Expected amount per mode of payment for the current user's open shift (none under blind close)."""
+	from klik_v16_fixes.blind_close import blind_close_settings
+
+	if blind_close_settings().get("hide"):
+		return {"hidden": True}
+	shift = frappe.get_all(
+		"POS Opening Entry",
+		filters={"user": frappe.session.user, "docstatus": 1, "status": "Open"},
+		fields=["name", "pos_profile", "period_start_date"],
+		order_by="creation desc",
+		limit=1,
+	)
+	if not shift:
+		return {"expected": {}}
+	rows = calculate_payment_reconciliation(shift[0], {"closing_balance": {}})
+	return {"expected": {r["mode_of_payment"]: r["expected_amount"] for r in rows}}
 
 
 def _cash_mode(modes):

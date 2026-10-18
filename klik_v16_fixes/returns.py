@@ -116,7 +116,7 @@ def _link_and_limit_quantities(doc):
 		if qty > left + 0.0001:
 			frappe.throw(
 				f"{item_code}: sold {sold.get(item_code, 0):g}, already returned {flt(returned.get(item_code)):g} "
-				f"on {doc.return_against} — cannot return {qty:g} more."
+				f"on {doc.return_against} — cannot return {qty:g} more (quantities in stock units)."
 			)
 
 
