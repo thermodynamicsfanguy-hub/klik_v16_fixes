@@ -23,8 +23,11 @@ ERPNext zeroes such a credit note's own outstanding only for non-POS returns
 (taxes_and_totals.calculate_outstanding_amount), so a validate hook does the
 same here; otherwise it would sit at -amount with nothing posted against it.
 
-Remove once
-KLiK handles returns on credit invoices itself.
+The return screen still pre-fills KLiK's figures ("Customer Paid" = the whole
+invoice, refund = everything); public/js/return_refund.js corrects them from
+refund_basis() so the seller sees the refund that will actually be booked.
+
+Remove once KLiK handles returns on credit invoices itself.
 """
 
 import frappe
@@ -72,3 +75,12 @@ def _cap_refund(doc, refundable):
 		row.amount = -amount
 		row.base_amount = -amount * flt(doc.conversion_rate or 1)
 		left -= amount
+
+
+@frappe.whitelist()
+def refund_basis(invoice):
+	"""What the customer still owes and has paid on an invoice, for the return screen."""
+	frappe.has_permission("Sales Invoice", "read", invoice, throw=True)
+	grand_total, owed = frappe.db.get_value("Sales Invoice", invoice, ["grand_total", "outstanding_amount"])
+	owed = max(flt(owed), 0)
+	return {"owed": owed, "paid": flt(grand_total) - owed}
