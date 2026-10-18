@@ -159,13 +159,12 @@ required_apps = ["klik_pos"]
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+# Returns on credit invoices: credit the original, refund only what was paid (see returns.py)
+doc_events = {
+	"Sales Invoice": {
+		"before_validate": "klik_v16_fixes.returns.before_validate",
+	},
+}
 
 # Scheduled Tasks
 # ---------------
