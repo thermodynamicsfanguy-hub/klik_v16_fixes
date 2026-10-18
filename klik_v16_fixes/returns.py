@@ -27,6 +27,14 @@ The return screen still pre-fills KLiK's figures ("Customer Paid" = the whole
 invoice, refund = everything); public/js/return_refund.js corrects them from
 refund_basis() so the seller sees the refund that will actually be booked.
 
+KLiK's returns also carry no link to the original invoice line
+(sales_invoice_item). ERPNext counts already-returned quantity per line, so
+without the link every return is checked against the full quantity sold and
+the same goods can be returned again and again (KLiK's screen limits it, but
+two sellers, a stale screen or a direct call do not). before_validate links
+each row to the original line and refuses a quantity beyond what was sold
+minus everything already returned against the invoice, linked or not.
+
 KLiK's return endpoints also swallow errors without rolling back (like
 checkout, see checkout.py), and create_multi_invoice_return() reports success
 even when some invoices failed. The endpoints are overridden below: a failed
@@ -52,6 +60,7 @@ def before_validate(doc, method=None):
 		return
 
 	_book_in_current_shift(doc)
+	_link_and_limit_quantities(doc)
 
 	still_owed = max(flt(frappe.db.get_value("Sales Invoice", doc.return_against, "outstanding_amount")), 0)
 	if still_owed:
@@ -69,6 +78,46 @@ def validate(doc, method=None):
 	"""Runs after the controller's validate: the credit is booked against the original invoice, not this one."""
 	if doc.is_return and doc.return_against and doc.is_pos and not doc.update_outstanding_for_self:
 		doc.outstanding_amount = 0
+
+
+def _link_and_limit_quantities(doc):
+	original = frappe.get_all(
+		"Sales Invoice Item",
+		filters={"parent": doc.return_against},
+		fields=["name", "item_code", "stock_qty"],
+		order_by="idx",
+	)
+	returned = dict(
+		frappe.db.sql(
+			"""
+			SELECT child.item_code, SUM(ABS(child.stock_qty))
+			FROM `tabSales Invoice Item` child
+			JOIN `tabSales Invoice` ret ON ret.name = child.parent
+			WHERE ret.return_against = %s AND ret.is_return = 1 AND ret.docstatus = 1 AND ret.name != %s
+			GROUP BY child.item_code
+			""",
+			(doc.return_against, doc.name or ""),
+		)
+	)
+	sold = {}
+	for row in original:
+		sold[row.item_code] = sold.get(row.item_code, 0) + flt(row.stock_qty)
+
+	asked = {}
+	for row in doc.items:
+		if not row.get("sales_invoice_item"):
+			match = next((o.name for o in original if o.item_code == row.item_code), None)
+			if match:
+				row.sales_invoice_item = match
+		asked[row.item_code] = asked.get(row.item_code, 0) + abs(flt(row.qty)) * flt(row.conversion_factor or 1)
+
+	for item_code, qty in asked.items():
+		left = sold.get(item_code, 0) - flt(returned.get(item_code))
+		if qty > left + 0.0001:
+			frappe.throw(
+				f"{item_code}: sold {sold.get(item_code, 0):g}, already returned {flt(returned.get(item_code)):g} "
+				f"on {doc.return_against} — cannot return {qty:g} more."
+			)
 
 
 def _book_in_current_shift(doc):
