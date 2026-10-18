@@ -38,6 +38,8 @@ FUNCTIONS = [
 	("klik_pos.api.sales_invoice", "create_partial_return", ("invoice_name", "return_items"), "returns.py"),
 	("klik_pos.api.sales_invoice", "return_sales_invoice", ("invoice_name",), "returns.py"),
 	("klik_pos.api.pos_profile", "get_pos_details", None, "blind_close.py"),
+	("erpnext.accounts.party", "get_due_date", ("posting_date", "party_type", "party", "company"), "terms.py"),
+	("erpnext.accounts.party", "get_payment_terms_template", ("party_name", "party_type", "company"), "terms.py"),
 	(
 		"erpnext.controllers.taxes_and_totals",
 		"calculate_taxes_and_totals.set_total_amount_to_default_mop",
@@ -61,6 +63,12 @@ BEHAVIOUR = [
 		"returns.py (cash refund of the full return amount)",
 	),
 	(
+		"klik_pos.api.sales_invoice",
+		"build_sales_invoice_doc",
+		"doc.due_date = due_date or frappe.utils.nowdate()",
+		"terms.py (credit sales due today unless the seller changes it)",
+	),
+	(
 		"klik_pos.api.pos_entry",
 		"_calculate_payment_reconciliation",
 		"WHERE si.pos_profile = %s",
@@ -74,6 +82,8 @@ FIELDS = [
 	("Sales Invoice", "update_outstanding_for_self", "returns.py"),
 	("Payment Entry", "custom_pos_opening_entry", "closing.py"),
 	("POS Profile", "custom_hide_expected_amount", "blind_close.py"),
+	("Customer", "payment_terms", "terms.py"),
+	("Customer Group", "payment_terms", "terms.py"),
 ]
 
 # Text the page scripts match, as it appears in KLiK's minified bundle.
@@ -100,6 +110,7 @@ PAGE_TEXT = {
 		'"Reconcile"',
 		"klik_pos_payment_entries_active_tab",
 	],
+	"credit_terms.js": ["Credit Sale Enabled", 'type:"date"', "beveren-cart-storage"],
 }
 
 BUNDLE_GLOB = ("klik_pos", "public", "klik_spa", "assets", "index-*.js")

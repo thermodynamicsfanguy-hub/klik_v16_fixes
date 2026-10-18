@@ -159,10 +159,14 @@ required_apps = ["klik_pos"]
 # ---------------
 # Hook on document methods and events
 
-# Returns on credit invoices: credit the original, refund only what was paid (see returns.py)
+# Credit invoices: returns credit the original and refund only what was paid (returns.py);
+# due dates follow the customer's payment terms (terms.py)
 doc_events = {
 	"Sales Invoice": {
-		"before_validate": "klik_v16_fixes.returns.before_validate",
+		"before_validate": [
+			"klik_v16_fixes.returns.before_validate",
+			"klik_v16_fixes.terms.before_validate",
+		],
 		"validate": "klik_v16_fixes.returns.validate",
 	},
 }
