@@ -37,6 +37,8 @@ FUNCTIONS = [
 	("klik_pos.api.sales_invoice", "get_current_pos_opening_entry", (), "returns.py"),
 	("klik_pos.api.sales_invoice", "create_partial_return", ("invoice_name", "return_items"), "returns.py"),
 	("klik_pos.api.sales_invoice", "return_sales_invoice", ("invoice_name",), "returns.py"),
+	("klik_pos.api.sales_invoice", "create_multi_invoice_return", ("return_data",), "returns.py"),
+	("klik_pos.api.sales_invoice", "_ensure_return_allowed", (), "returns.py"),
 	("klik_pos.api.pos_profile", "get_pos_details", None, "blind_close.py"),
 	("erpnext.accounts.party", "get_due_date", ("posting_date", "party_type", "party", "company"), "terms.py"),
 	("erpnext.accounts.party", "get_payment_terms_template", ("party_name", "party_type", "company"), "terms.py"),
@@ -61,6 +63,12 @@ BEHAVIOUR = [
 		"create_partial_return",
 		'"amount": -abs(final_return_amount)',
 		"returns.py (cash refund of the full return amount)",
+	),
+	(
+		"klik_pos.api.sales_invoice",
+		"create_multi_invoice_return",
+		'frappe.log_error(f"Failed to create return for {invoice_name}',
+		"returns.py (multi-invoice return swallows per-invoice failures)",
 	),
 	(
 		"klik_pos.api.sales_invoice",

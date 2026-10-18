@@ -212,6 +212,10 @@ doc_events = {
 override_whitelisted_methods = {
 	"klik_pos.api.sales_invoice.queue_sales_invoice": "klik_v16_fixes.checkout.queue_sales_invoice",
 	"klik_pos.api.sales_invoice.create_and_submit_invoice": "klik_v16_fixes.checkout.create_and_submit_invoice",
+	# Returns: roll back failures, multi-invoice returns all or nothing (see returns.py)
+	"klik_pos.api.sales_invoice.create_partial_return": "klik_v16_fixes.returns.create_partial_return",
+	"klik_pos.api.sales_invoice.return_sales_invoice": "klik_v16_fixes.returns.return_sales_invoice",
+	"klik_pos.api.sales_invoice.create_multi_invoice_return": "klik_v16_fixes.returns.create_multi_invoice_return",
 }
 #
 # each overriding function accepts a `data` argument;

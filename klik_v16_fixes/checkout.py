@@ -23,15 +23,16 @@ from klik_pos.api import sales_invoice as klik_sales_invoice
 
 @frappe.whitelist()
 def queue_sales_invoice(data):
-	return _rollback_on_failure(klik_sales_invoice.queue_sales_invoice(data))
+	return rollback_on_failure(klik_sales_invoice.queue_sales_invoice(data))
 
 
 @frappe.whitelist()
 def create_and_submit_invoice(data):
-	return _rollback_on_failure(klik_sales_invoice.queue_sales_invoice(data))
+	return rollback_on_failure(klik_sales_invoice.queue_sales_invoice(data))
 
 
-def _rollback_on_failure(result):
+def rollback_on_failure(result):
+	"""Roll the request back when KLiK's catch-all failure ({success, message} only) comes back."""
 	if not (isinstance(result, dict) and result.get("success") is False and set(result) == {"success", "message"}):
 		return result
 

@@ -27,11 +27,22 @@ The return screen still pre-fills KLiK's figures ("Customer Paid" = the whole
 invoice, refund = everything); public/js/return_refund.js corrects them from
 refund_basis() so the seller sees the refund that will actually be booked.
 
+KLiK's return endpoints also swallow errors without rolling back (like
+checkout, see checkout.py), and create_multi_invoice_return() reports success
+even when some invoices failed. The endpoints are overridden below: a failed
+return is rolled back, and a multi-invoice return creates all of its returns
+or none, naming the invoice that failed.
+
 Remove once KLiK handles returns on credit invoices itself.
 """
 
+import json
+
 import frappe
 from frappe.utils import flt
+from klik_pos.api import sales_invoice as klik_sales_invoice
+
+from klik_v16_fixes.checkout import rollback_on_failure
 
 
 def before_validate(doc, method=None):
@@ -84,3 +95,51 @@ def refund_basis(invoice):
 	grand_total, owed = frappe.db.get_value("Sales Invoice", invoice, ["grand_total", "outstanding_amount"])
 	owed = max(flt(owed), 0)
 	return {"owed": owed, "paid": flt(grand_total) - owed}
+
+
+@frappe.whitelist()
+def create_partial_return(invoice_name, return_items, payment_method=None, return_amount=None, expected_return_amount=None):
+	return rollback_on_failure(
+		klik_sales_invoice.create_partial_return(
+			invoice_name, return_items, payment_method, return_amount, expected_return_amount
+		)
+	)
+
+
+@frappe.whitelist()
+def return_sales_invoice(invoice_name):
+	return rollback_on_failure(klik_sales_invoice.return_sales_invoice(invoice_name))
+
+
+@frappe.whitelist()
+def create_multi_invoice_return(return_data):
+	"""KLiK's multi-invoice return, all or nothing."""
+	klik_sales_invoice._ensure_return_allowed()
+	if isinstance(return_data, str):
+		return_data = json.loads(return_data)
+
+	created = []
+	for invoice_return in return_data.get("invoice_returns", []):
+		if not invoice_return.get("return_items"):
+			continue
+		invoice = invoice_return.get("invoice_name")
+		result = klik_sales_invoice.create_partial_return(
+			invoice,
+			invoice_return.get("return_items"),
+			payment_method=invoice_return.get("payment_method"),
+			return_amount=invoice_return.get("return_amount"),
+		)
+		if not result.get("success"):
+			frappe.db.rollback()
+			frappe.local.message_log = []
+			return {
+				"success": False,
+				"message": f"{invoice}: {result.get('message')} — no returns were created.",
+			}
+		created.append(result.get("return_invoice"))
+
+	return {
+		"success": True,
+		"created_returns": created,
+		"message": f"Created {len(created)} return invoices successfully",
+	}
