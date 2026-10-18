@@ -163,6 +163,7 @@ required_apps = ["klik_pos"]
 doc_events = {
 	"Sales Invoice": {
 		"before_validate": "klik_v16_fixes.returns.before_validate",
+		"validate": "klik_v16_fixes.returns.validate",
 	},
 }
 

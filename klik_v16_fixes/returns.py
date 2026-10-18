@@ -15,6 +15,10 @@ A before_validate hook on KLiK's returns:
   (update_outstanding_for_self = 0) and caps the cash refund at what the
   customer actually paid: returned amount minus what they still owe.
 
+ERPNext zeroes such a credit note's own outstanding only for non-POS returns
+(taxes_and_totals.calculate_outstanding_amount), so a validate hook does the
+same here; otherwise it would sit at -amount with nothing posted against it.
+
 A return on a fully paid invoice keeps KLiK's refund unchanged. Remove once
 KLiK handles returns on credit invoices itself.
 """
@@ -39,6 +43,12 @@ def before_validate(doc, method=None):
 	returned = abs(flt(doc.rounded_total) or flt(doc.grand_total))
 	doc.update_outstanding_for_self = 0
 	_cap_refund(doc, max(returned - still_owed, 0))
+
+
+def validate(doc, method=None):
+	"""Runs after the controller's validate: the credit is booked against the original invoice, not this one."""
+	if doc.is_return and doc.return_against and doc.is_pos and not doc.update_outstanding_for_self:
+		doc.outstanding_amount = 0
 
 
 def _book_in_current_shift(doc):
