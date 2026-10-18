@@ -236,14 +236,14 @@ override_whitelisted_methods = {
 
 # Request Events
 # ----------------
-# Runtime fixes, installed once per process (see catalogue.py, pricing.py and closing.py)
-before_request = ["klik_v16_fixes.catalogue.apply", "klik_v16_fixes.pricing.apply", "klik_v16_fixes.closing.apply"]
+# Runtime fixes, installed once per process (see catalogue.py, pricing.py, closing.py and uoms.py)
+before_request = ["klik_v16_fixes.catalogue.apply", "klik_v16_fixes.pricing.apply", "klik_v16_fixes.closing.apply", "klik_v16_fixes.uoms.apply"]
 # Blind-close and return-refund scripts for the /klik_pos page (see klik_page.py)
 after_request = ["klik_v16_fixes.klik_page.inject_into_klik_page"]
 
 # Job Events
 # ----------
-before_job = ["klik_v16_fixes.catalogue.apply", "klik_v16_fixes.pricing.apply", "klik_v16_fixes.closing.apply"]
+before_job = ["klik_v16_fixes.catalogue.apply", "klik_v16_fixes.pricing.apply", "klik_v16_fixes.closing.apply", "klik_v16_fixes.uoms.apply"]
 # after_job = ["klik_v16_fixes.utils.after_job"]
 
 # User Data Protection

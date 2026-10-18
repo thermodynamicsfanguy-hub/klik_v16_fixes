@@ -35,6 +35,7 @@ FUNCTIONS = [
 	("klik_pos.api.sales_invoice", "queue_sales_invoice", ("data",), "checkout.py"),
 	("klik_pos.api.sales_invoice", "create_and_submit_invoice", ("data",), "checkout.py"),
 	("klik_pos.api.sales_invoice", "get_current_pos_opening_entry", (), "returns.py"),
+	("klik_pos.api.sales_invoice", "_add_uom_to_item", ("item_data", "item"), "uoms.py"),
 	("klik_pos.api.sales_invoice", "create_partial_return", ("invoice_name", "return_items"), "returns.py"),
 	("klik_pos.api.sales_invoice", "return_sales_invoice", ("invoice_name",), "returns.py"),
 	("klik_pos.api.sales_invoice", "create_multi_invoice_return", ("return_data",), "returns.py"),
@@ -63,6 +64,12 @@ BEHAVIOUR = [
 		"create_partial_return",
 		'"amount": -abs(final_return_amount)',
 		"returns.py (cash refund of the full return amount)",
+	),
+	(
+		"klik_pos.api.sales_invoice",
+		"_add_uom_to_item",
+		'if selected_uom and selected_uom != "Nos":',
+		"uoms.py (unit dropped for Nos, so the item's sales unit is used)",
 	),
 	(
 		"klik_pos.api.sales_invoice",
