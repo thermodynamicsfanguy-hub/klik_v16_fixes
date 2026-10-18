@@ -12,14 +12,18 @@ so its refund lands in a shift that may already be closed.
 A before_validate hook on KLiK's returns:
 - links the return to the current user's open shift;
 - when the original invoice still has a balance, credits that invoice
-  (update_outstanding_for_self = 0) and caps the cash refund at what the
-  customer actually paid: returned amount minus what they still owe.
+  (update_outstanding_for_self = 0);
+- caps the cash refund at the returned amount minus what is still owed. This
+  also fixes return_sales_invoice() on a cash sale where change was given: it
+  copies the amount handed over (200 for a 140 sale) as the refund, which
+  ERPNext rejects, so the return could not be made at all. The cap only ever
+  lowers KLiK's refund.
 
 ERPNext zeroes such a credit note's own outstanding only for non-POS returns
 (taxes_and_totals.calculate_outstanding_amount), so a validate hook does the
 same here; otherwise it would sit at -amount with nothing posted against it.
 
-A return on a fully paid invoice keeps KLiK's refund unchanged. Remove once
+Remove once
 KLiK handles returns on credit invoices itself.
 """
 
@@ -35,14 +39,13 @@ def before_validate(doc, method=None):
 
 	_book_in_current_shift(doc)
 
-	still_owed = flt(frappe.db.get_value("Sales Invoice", doc.return_against, "outstanding_amount"))
-	if still_owed <= 0:
-		return
+	still_owed = max(flt(frappe.db.get_value("Sales Invoice", doc.return_against, "outstanding_amount")), 0)
+	if still_owed:
+		doc.update_outstanding_for_self = 0
 
 	doc.calculate_taxes_and_totals()
 	returned = abs(flt(doc.rounded_total) or flt(doc.grand_total))
-	doc.update_outstanding_for_self = 0
-	_cap_refund(doc, max(returned - still_owed, 0))
+	_cap_refund(doc, returned - still_owed)
 
 
 def validate(doc, method=None):
