@@ -135,10 +135,11 @@
 	function schedule() {
 		if (queued) return;
 		queued = true;
-		requestAnimationFrame(() => {
+		// A timer, not requestAnimationFrame: rAF pauses while the tab is in the background.
+		setTimeout(() => {
 			queued = false;
 			apply();
-		});
+		}, 50);
 	}
 
 	function start() {
