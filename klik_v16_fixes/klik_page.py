@@ -9,7 +9,7 @@ import hashlib
 from pathlib import Path
 
 JS_DIR = Path(__file__).resolve().parent / "public" / "js"
-SCRIPTS = ("blind_close.js", "return_refund.js")  # see blind_close.py and returns.py
+SCRIPTS = ("blind_close.js", "return_refund.js", "payments_refresh.js")  # see blind_close.py, returns.py and the script header
 URL_PREFIX = "/assets/klik_v16_fixes/js/"
 
 _tags = None

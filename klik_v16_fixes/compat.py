@@ -92,6 +92,14 @@ PAGE_TEXT = {
 		'step:"0.01"',
 		"Toastify__toast-body",
 	],
+	"payments_refresh.js": [
+		"Payment received: ",
+		"Payment reconciled successfully.",
+		'"By Invoice"',
+		'"By Customer"',
+		'"Reconcile"',
+		"klik_pos_payment_entries_active_tab",
+	],
 }
 
 BUNDLE_GLOB = ("klik_pos", "public", "klik_spa", "assets", "index-*.js")
