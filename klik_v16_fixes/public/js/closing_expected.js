@@ -21,7 +21,8 @@
 	}
 
 	function money(template, value) {
-		return template.replace(/-?[\d,]+(?:\.\d+)?/, value.toFixed(2));
+		const text = value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+		return template.replace(/-?[\d,]+(?:\.\d+)?/, text);
 	}
 
 	function load() {
