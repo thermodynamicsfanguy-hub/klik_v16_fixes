@@ -58,7 +58,7 @@
 
 	function apply() {
 		for (const button of document.querySelectorAll("button")) {
-			if (button.textContent.trim() !== CREDIT_ON) continue;
+			if (klikV16Text(button).trim() !== CREDIT_ON) continue;
 			const box = button.parentElement;
 			const input = box && box.querySelector('input[type="date"]');
 			if (!input || input.disabled || input.hasAttribute(DONE_ATTR)) continue;

@@ -75,14 +75,14 @@
 			note.className = className;
 			parent.appendChild(note);
 		}
-		if (note.textContent !== text) note.textContent = text;
+		if (klikV16Text(note) !== text) note.textContent = text;
 	}
 
 	function dialogFor(title) {
 		// Cheap check first: refund boxes only exist while a return dialog is open.
 		for (const input of document.querySelectorAll(REFUND_INPUT)) {
 			for (let el = input.parentElement; el && el !== document.body; el = el.parentElement) {
-				const text = el.textContent;
+				const text = klikV16Text(el);
 				if (!text.includes(title)) continue;
 				if (title === SINGLE_TITLE && (text.includes(MULTI_TITLE) || !text.includes("Invoice:"))) break;
 				return el;
@@ -95,7 +95,7 @@
 
 	function singleTotal(dialog) {
 		for (const span of dialog.querySelectorAll("span")) {
-			if (span.textContent.trim() === "Total Return Amount:" && span.nextElementSibling) {
+			if (klikV16Text(span).trim() === "Total Return Amount:" && span.nextElementSibling) {
 				return span.nextElementSibling;
 			}
 		}
@@ -107,7 +107,7 @@
 		if (!lastRefund) return;
 		document.querySelectorAll(".Toastify__toast").forEach((toast) => {
 			const body = toast.querySelector(".Toastify__toast-body > div:last-child") || toast;
-			if (!TOAST.test(body.textContent.trim())) return;
+			if (!TOAST.test(klikV16Text(body).trim())) return;
 			body.textContent = lastRefund.zero
 				? "Return created: no cash refund, deducted from the customer's balance"
 				: "Return created: cash refund " + lastRefund.text + " (" + lastRefund.method + ")";
@@ -115,7 +115,7 @@
 	}
 
 	function applySingle(dialog) {
-		const m = dialog.textContent.match(/Invoice:\s*([A-Za-z0-9-]+)/);
+		const m = klikV16Text(dialog).match(/Invoice:\s*([A-Za-z0-9-]+)/);
 		if (!m) return;
 		const info = getBasis(m[1]);
 		if (!info) return;
@@ -127,9 +127,9 @@
 		const totalEl = singleTotal(dialog);
 		const input = dialog.querySelector(REFUND_INPUT);
 		if (!totalEl || !input) return;
-		const returned = amount(totalEl.textContent);
+		const returned = amount(klikV16Text(totalEl));
 		if (isNaN(returned)) return;
-		const template = totalEl.textContent.trim();
+		const template = klikV16Text(totalEl).trim();
 
 		const refund = Math.max(round2(returned - info.owed), 0);
 		setInput(input, refund);
@@ -137,7 +137,7 @@
 		lastRefund = { zero: refund === 0, text: money(template, refund), method: method ? method.value : "" };
 
 		dialog.querySelectorAll("span").forEach((span) => {
-			const label = span.textContent.trim();
+			const label = klikV16Text(span).trim();
 			if (RENAME[label]) span.textContent = RENAME[label];
 		});
 
@@ -156,7 +156,7 @@
 	function invoiceCards(dialog) {
 		const cards = [];
 		dialog.querySelectorAll("h4").forEach((h4) => {
-			const name = h4.textContent.trim();
+			const name = klikV16Text(h4).trim();
 			if (!INVOICE_NAME.test(name)) return;
 			const card = h4.closest(".rounded-lg");
 			if (card) cards.push({ name, card });
@@ -169,7 +169,7 @@
 		let sum = 0;
 		card.querySelectorAll("tbody tr").forEach((row) => {
 			const cells = row.querySelectorAll("td");
-			const value = cells.length ? amount(cells[cells.length - 1].textContent) : NaN;
+			const value = cells.length ? amount(klikV16Text(cells[cells.length - 1])) : NaN;
 			if (!isNaN(value)) sum += value;
 		});
 		return round2(sum);
@@ -177,7 +177,7 @@
 
 	function cardTemplate(card) {
 		const cell = card.querySelector("tbody tr td:last-child");
-		return cell ? cell.textContent.trim() : "0.00";
+		return cell ? klikV16Text(cell).trim() : "0.00";
 	}
 
 	function applyMulti(dialog) {
@@ -198,7 +198,7 @@
 
 				const box = input.closest(".relative") ? input.closest(".relative").parentElement : null;
 				const label = box && box.querySelector("label");
-				if (label && label.textContent.trim() === "Amount") label.textContent = "Cash refund";
+				if (label && klikV16Text(label).trim() === "Amount") label.textContent = "Cash refund";
 				if (box) {
 					const t = cardTemplate(card);
 					setNote(
@@ -214,7 +214,7 @@
 
 		// "Cash to refund" next to KLiK's Total Return Amount, once any figure was corrected.
 		for (const p of dialog.querySelectorAll("p")) {
-			if (p.textContent.trim() !== "Total Return Amount") continue;
+			if (klikV16Text(p).trim() !== "Total Return Amount") continue;
 			const box = p.parentElement;
 			if (!box) break;
 			const existing = box.querySelector(":scope > [" + CASH_ATTR + "]");
@@ -230,7 +230,7 @@
 				box.appendChild(line);
 			}
 			const text = "Cash to refund: " + money(template, round2(cashTotal));
-			if (line.textContent !== text) line.textContent = text;
+			if (klikV16Text(line) !== text) line.textContent = text;
 			break;
 		}
 	}

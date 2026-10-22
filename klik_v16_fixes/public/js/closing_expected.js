@@ -47,7 +47,7 @@
 
 	function labelCells(name) {
 		return [...document.querySelectorAll("div.text-xs")].filter(
-			(d) => d.textContent.trim() === name && d.offsetParent !== null
+			(d) => klikV16Text(d).trim() === name && d.offsetParent !== null
 		);
 	}
 
@@ -65,22 +65,22 @@
 			const value = label.nextElementSibling;
 			const nameEl = row && row.querySelector(".font-medium");
 			if (!row || !value || !nameEl) continue;
-			const mode = nameEl.textContent.trim();
+			const mode = klikV16Text(nameEl).trim();
 			if (!(mode in expected)) continue;
 
 			const target = expected[mode];
-			const template = value.getAttribute(FIXED_ATTR) || value.textContent.trim();
+			const template = value.getAttribute(FIXED_ATTR) || klikV16Text(value).trim();
 			value.setAttribute(FIXED_ATTR, template);
 			const text = money(template, target);
-			if (value.textContent !== text) value.textContent = text;
+			if (klikV16Text(value) !== text) value.textContent = text;
 
-			const varianceLabel = [...row.querySelectorAll("div.text-xs")].find((d) => d.textContent.trim() === VARIANCE);
+			const varianceLabel = [...row.querySelectorAll("div.text-xs")].find((d) => klikV16Text(d).trim() === VARIANCE);
 			const counted = row.querySelector('input[type="number"]');
 			const varianceEl = varianceLabel && varianceLabel.nextElementSibling;
 			if (!varianceEl || !counted) continue;
 			const variance = Math.round(((parseFloat(counted.value) || 0) - target) * 100) / 100;
 			const vText = money(template, variance);
-			if (varianceEl.textContent !== vText) varianceEl.textContent = vText;
+			if (klikV16Text(varianceEl) !== vText) varianceEl.textContent = vText;
 			varianceEl.style.color = variance === 0 ? "" : variance < 0 ? "#dc2626" : "#d97706";
 		}
 	}

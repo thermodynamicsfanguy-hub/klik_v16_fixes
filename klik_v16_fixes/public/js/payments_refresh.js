@@ -34,7 +34,7 @@
 	function checkToasts() {
 		if (reloading || !onPaymentsPage()) return;
 		for (const toast of document.querySelectorAll(".Toastify__toast")) {
-			const text = toast.textContent.trim();
+			const text = klikV16Text(toast).trim();
 			if (DONE.some((re) => re.test(text))) return reload(TOAST_SEEN_MS);
 		}
 	}
@@ -44,7 +44,7 @@
 		(event) => {
 			if (!onPaymentsPage() || Date.now() - loadedAt < STALE_MS) return;
 			const button = event.target.closest && event.target.closest("button");
-			if (button && TABS.has(button.textContent.trim())) reload(0);
+			if (button && TABS.has(klikV16Text(button).trim())) reload(0);
 		},
 		true
 	);

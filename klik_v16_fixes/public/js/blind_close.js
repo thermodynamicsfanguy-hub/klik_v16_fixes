@@ -11,7 +11,7 @@
 	function apply(root) {
 		if (hide !== true) return;
 		root.querySelectorAll("div.text-xs").forEach((label) => {
-			if (!LABELS.has(label.textContent.trim())) return;
+			if (!LABELS.has(klikV16Text(label).trim())) return;
 			const cell = label.parentElement;
 			if (cell && cell.style.display !== "none") {
 				cell.style.display = "none";
