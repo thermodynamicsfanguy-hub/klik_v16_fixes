@@ -127,6 +127,16 @@ PAGE_TEXT = {
 	],
 	"credit_terms.js": ["Credit Sale Enabled", 'type:"date"', "beveren-cart-storage"],
 	"closing_expected.js": ["Close Shift", '"Expected"', '"Variance"', '"Counted"'],
+	"line_discounts.js": [
+		"__reactFiber$",
+		"data-cart-item-id",
+		"itemId:",
+		"itemDiscount:",
+		"onDiscountChange:",
+		"onCustomRateChange:",
+		"selectedPriceList",
+		"beveren-cart-storage",
+	],
 }
 
 BUNDLE_GLOB = ("klik_pos", "public", "klik_spa", "assets", "index-*.js")
