@@ -8,7 +8,7 @@ working silently — a patch replaces a name nobody calls any more, a script
 finds nothing and fails open. This lists each dependency and reports every
 one that no longer holds.
 
-Run it after every KLiK update (the storelab rebuild script does):
+Run it after every KLiK update (for example from your rebuild script):
 
     bench --site <site> execute klik_v16_fixes.compat.check
 
