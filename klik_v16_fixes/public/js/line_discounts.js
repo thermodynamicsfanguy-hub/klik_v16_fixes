@@ -113,7 +113,7 @@
 			document.body.appendChild(note);
 		}
 		note.textContent =
-			"Seller discount restored after reload on " + count + (count === 1 ? " line" : " lines") + " — check the cart before checkout";
+			"Seller discount restored on " + count + (count === 1 ? " line" : " lines") + " — check the cart before checkout";
 		clearTimeout(note._timer);
 		note._timer = setTimeout(() => note.remove(), 8000);
 	}
