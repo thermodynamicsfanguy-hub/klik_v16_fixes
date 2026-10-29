@@ -139,11 +139,18 @@ def _cap_refund(doc, refundable):
 
 @frappe.whitelist()
 def refund_basis(invoice):
-	"""What the customer still owes and has paid on an invoice, for the return screen."""
+	"""What the customer still owes and has paid on an invoice, for the return screen.
+
+	``tax_factor`` turns KLiK's return lines (qty x rate, before the invoice's taxes)
+	into what the credit note will total: grand_total / net_total of the sale.
+	"""
 	frappe.has_permission("Sales Invoice", "read", invoice, throw=True)
-	grand_total, owed = frappe.db.get_value("Sales Invoice", invoice, ["grand_total", "outstanding_amount"])
+	grand_total, net_total, owed = frappe.db.get_value(
+		"Sales Invoice", invoice, ["grand_total", "net_total", "outstanding_amount"]
+	)
 	owed = max(flt(owed), 0)
-	return {"owed": owed, "paid": flt(grand_total) - owed}
+	factor = flt(grand_total) / flt(net_total) if flt(net_total) > 0 else 1
+	return {"owed": owed, "paid": flt(grand_total) - owed, "tax_factor": round(factor, 6)}
 
 
 @frappe.whitelist()

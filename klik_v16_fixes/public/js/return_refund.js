@@ -8,7 +8,11 @@
 // - Multi-Invoice Return: each selected invoice's Amount box is set the same
 //   way with a line under it, and a "Cash to refund" total is shown next to
 //   KLiK's Total Return Amount.
-// Invoices with nothing owed are left exactly as KLiK shows them. KLiK's
+// KLiK adds the return lines up before the invoice's taxes (qty x rate) and
+// compares that with what was paid after them, so a fully paid return read
+// «Write-off -63.00» on 420 + 15% VAT. Every figure here is first taken to the
+// credit note's own total (refund_basis.tax_factor = the sale's grand / net), and
+// for a fully paid invoice the Paid / Write-off lines are dropped. KLiK's
 // labels are hard-coded English, so the match is on the text (compat.py
 // checks KLiK's bundle still contains them); if KLiK changes that markup the
 // dialogs fall back to KLiK's figures and the server still books the right
@@ -18,6 +22,7 @@
 	const MULTI_TITLE = "Multi-Invoice Return";
 	const RENAME = { "Paid Amount:": "Cash refund:", "Write-off:": "Deducted from balance:" };
 	const NOTE_ATTR = "data-klik-v16-fixes-owed";
+	const BEFORE_ATTR = "data-klik-v16-fixes-before-tax";
 	const CASH_ATTR = "data-klik-v16-fixes-cash-total";
 	const REFUND_INPUT = 'input[type="number"][step="0.01"]';
 	const INVOICE_NAME = /^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+$/; // e.g. ACC-SINV-2026-00024
@@ -38,6 +43,23 @@
 
 	function round2(value) {
 		return Math.round(value * 100) / 100;
+	}
+
+	// KLiK's return figures are before tax; the credit note totals them with it.
+	function withTax(value, info) {
+		return round2(value * (info && info.tax_factor > 0 ? info.tax_factor : 1));
+	}
+
+	function rowOf(dialog, label) {
+		for (const span of dialog.querySelectorAll("span")) {
+			const text = klikV16Text(span).trim();
+			if (text === label || text === RENAME[label]) return span.parentElement;
+		}
+		return null;
+	}
+
+	function setText(el, text) {
+		if (el && klikV16Text(el).trim() !== text) el.textContent = text;
 	}
 
 	function getBasis(invoice) {
@@ -119,17 +141,31 @@
 		if (!m) return;
 		const info = getBasis(m[1]);
 		if (!info) return;
-		if (!(info.owed > 0)) {
-			lastRefund = null;
-			return;
-		}
 
 		const totalEl = singleTotal(dialog);
 		const input = dialog.querySelector(REFUND_INPUT);
 		if (!totalEl || !input) return;
-		const returned = amount(klikV16Text(totalEl));
-		if (isNaN(returned)) return;
+		// KLiK's figure, before tax; ours is what the credit note will total.
+		const before = Number(totalEl.getAttribute(BEFORE_ATTR));
+		const shown = amount(klikV16Text(totalEl));
+		if (isNaN(shown)) return;
 		const template = klikV16Text(totalEl).trim();
+		const returned = withTax(before && Math.abs(shown - withTax(before, info)) < 0.005 ? before : shown, info);
+		if (Math.abs(shown - returned) >= 0.005) {
+			totalEl.setAttribute(BEFORE_ATTR, String(shown));
+			setText(totalEl, money(template, returned));
+		}
+
+		if (!(info.owed > 0)) {
+			// Paid in full: the refund is the return itself; nothing to write off.
+			lastRefund = null;
+			setInput(input, returned);
+			for (const label of ["Paid Amount:", "Write-off:"]) {
+				const row = rowOf(dialog, label);
+				if (row) row.style.display = "none";
+			}
+			return;
+		}
 
 		const refund = Math.max(round2(returned - info.owed), 0);
 		setInput(input, refund);
@@ -191,7 +227,7 @@
 			template = template || cardTemplate(card);
 			const info = getBasis(name);
 			if (info && info.owed > 0) {
-				const returned = cardReturned(card);
+				const returned = withTax(cardReturned(card), info);
 				const refund = Math.max(round2(returned - info.owed), 0);
 				setInput(input, refund);
 				anyAdjusted = true;
@@ -208,6 +244,10 @@
 						"text-xs text-gray-500 dark:text-gray-400 mt-1"
 					);
 				}
+			} else if (info) {
+				// Paid in full: the refund is the return with its tax.
+				setInput(input, withTax(cardReturned(card), info));
+				anyAdjusted = true;
 			}
 			cashTotal += parseFloat(input.value || "0") || 0;
 		});

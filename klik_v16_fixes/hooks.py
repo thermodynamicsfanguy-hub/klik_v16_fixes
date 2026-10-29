@@ -211,6 +211,8 @@ doc_events = {
 # Roll back a checkout that fails part-way through submit (see checkout.py)
 override_whitelisted_methods = {
 	"klik_pos.api.sales_invoice.queue_sales_invoice": "klik_v16_fixes.checkout.queue_sales_invoice",
+	# klik_pos lets guests list serial numbers; signed-in users only (see item_guard.py)
+	"klik_pos.api.item.item_details.get_serial_nos_for_item": "klik_v16_fixes.item_guard.get_serial_nos_for_item",
 	"klik_pos.api.sales_invoice.create_and_submit_invoice": "klik_v16_fixes.checkout.create_and_submit_invoice",
 	# Returns: roll back failures, multi-invoice returns all or nothing (see returns.py)
 	"klik_pos.api.sales_invoice.create_partial_return": "klik_v16_fixes.returns.create_partial_return",

@@ -104,6 +104,7 @@ FIELDS = [
 # Text the page scripts match, as it appears in KLiK's minified bundle.
 PAGE_TEXT = {
 	"blind_close.js": ['"Expected"', '"Variance"'],
+	"rate_labels.js": ['"Rate (Excl. Tax)":"Rate (Incl. Tax)"', '"Amount (Incl. Tax)"'],
 	"return_refund.js": [
 		"Return Items",
 		"Multi-Invoice Return",
