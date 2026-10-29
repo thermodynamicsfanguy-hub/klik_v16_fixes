@@ -103,7 +103,12 @@
 	function dialogFor(title) {
 		// Cheap check first: refund boxes only exist while a return dialog is open.
 		for (const input of document.querySelectorAll(REFUND_INPUT)) {
+			// Only inside KLiK's modal overlay: the invoice history page itself carries a
+			// «Multi-Invoice Return» button, so climbing past the modal made every single
+			// return window read as the multi one and left it uncorrected.
+			const modal = input.closest(".fixed.inset-0");
 			for (let el = input.parentElement; el && el !== document.body; el = el.parentElement) {
+				if (modal && !modal.contains(el)) break;
 				const text = klikV16Text(el);
 				if (!text.includes(title)) continue;
 				if (title === SINGLE_TITLE && (text.includes(MULTI_TITLE) || !text.includes("Invoice:"))) break;
