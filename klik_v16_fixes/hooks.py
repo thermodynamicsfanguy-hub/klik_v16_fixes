@@ -218,6 +218,11 @@ override_whitelisted_methods = {
 	"klik_pos.api.sales_invoice.create_partial_return": "klik_v16_fixes.returns.create_partial_return",
 	"klik_pos.api.sales_invoice.return_sales_invoice": "klik_v16_fixes.returns.return_sales_invoice",
 	"klik_pos.api.sales_invoice.create_multi_invoice_return": "klik_v16_fixes.returns.create_multi_invoice_return",
+	# Lists that read the whole company: a seller bound to a branch sees that branch (see scope.py)
+	"klik_pos.api.payment.get_outstanding_sales_invoices": "klik_v16_fixes.scope.get_outstanding_sales_invoices",
+	"klik_pos.api.payment.get_unallocated_customer_payment_entries": "klik_v16_fixes.scope.get_unallocated_customer_payment_entries",
+	"klik_pos.api.sales_invoice.get_customer_invoices_for_return": "klik_v16_fixes.scope.get_customer_invoices_for_return",
+	"klik_pos.api.customer.get_customer_statistics": "klik_v16_fixes.scope.get_customer_statistics",
 }
 #
 # each overriding function accepts a `data` argument;
