@@ -112,3 +112,19 @@ def get_customer_statistics(customer_id):
 		{"c": customer_id, "b": branch}, as_dict=True,
 	)[0]
 	return _replace(result, {"total_orders": row.n, "total_spent": row.total, "last_visit": row.last})
+
+
+@frappe.whitelist()
+def get_global_totals():
+	"""The dashboard's counts: a seller bound to a branch counts that branch's invoices."""
+	result = klik_customer.get_global_totals()
+	branch = _bound()
+	if not branch:
+		return result
+	count = frappe.db.sql(
+		"""select count(*) from `tabSales Invoice` s where s.docstatus = 1 and s.is_return = 0 and s.status != 'Cancelled'
+		and coalesce(s.custom_pos_opening_entry, '') != ''
+		and (s.set_warehouse = %(b)s or exists (select 1 from `tabSales Invoice Item` i where i.parent = s.name and i.warehouse = %(b)s))""",
+		{"b": branch},
+	)[0][0]
+	return _replace(result, {"total_invoices": count})

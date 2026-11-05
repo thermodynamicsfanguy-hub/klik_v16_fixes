@@ -223,6 +223,7 @@ override_whitelisted_methods = {
 	"klik_pos.api.payment.get_unallocated_customer_payment_entries": "klik_v16_fixes.scope.get_unallocated_customer_payment_entries",
 	"klik_pos.api.sales_invoice.get_customer_invoices_for_return": "klik_v16_fixes.scope.get_customer_invoices_for_return",
 	"klik_pos.api.customer.get_customer_statistics": "klik_v16_fixes.scope.get_customer_statistics",
+	"klik_pos.api.customer.get_global_totals": "klik_v16_fixes.scope.get_global_totals",
 }
 #
 # each overriding function accepts a `data` argument;
