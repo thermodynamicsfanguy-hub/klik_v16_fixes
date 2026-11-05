@@ -12,6 +12,10 @@ from klik_pos.api import payment as klik_payment
 from klik_pos.api import sales_invoice as klik_invoice
 
 CAP = 500
+# A sale is the branch's by its point of sale, its own warehouse, or a line from here (store_core.branch agrees).
+OF_BRANCH = """(s.set_warehouse = %(b)s
+	or exists (select 1 from `tabPOS Profile` p where p.name = s.pos_profile and p.warehouse = %(b)s)
+	or exists (select 1 from `tabSales Invoice Item` i where i.parent = s.name and i.warehouse = %(b)s))"""
 
 
 def _bound():
@@ -25,8 +29,7 @@ def _invoices_of(names, branch):
 	if not names:
 		return set()
 	rows = frappe.db.sql(
-		"""select parent from `tabSales Invoice Item` where parent in %(n)s and warehouse = %(b)s
-		union select name from `tabSales Invoice` where name in %(n)s and set_warehouse = %(b)s""",
+		f"""select s.name from `tabSales Invoice` s where s.name in %(n)s and {OF_BRANCH}""",
 		{"n": list(names), "b": branch},
 	)
 	return {row[0] for row in rows}
@@ -105,10 +108,10 @@ def get_customer_statistics(customer_id):
 	if not branch:
 		return result
 	row = frappe.db.sql(
-		"""select count(*) n, coalesce(sum(s.grand_total), 0) total, max(s.posting_date) last from `tabSales Invoice` s
+		f"""select count(*) n, coalesce(sum(s.grand_total), 0) total, max(s.posting_date) last from `tabSales Invoice` s
 		where s.customer = %(c)s and s.docstatus = 1 and s.is_return = 0 and s.status != 'Cancelled'
 		and coalesce(s.custom_pos_opening_entry, '') != ''
-		and (s.set_warehouse = %(b)s or exists (select 1 from `tabSales Invoice Item` i where i.parent = s.name and i.warehouse = %(b)s))""",
+		and {OF_BRANCH}""",
 		{"c": customer_id, "b": branch}, as_dict=True,
 	)[0]
 	return _replace(result, {"total_orders": row.n, "total_spent": row.total, "last_visit": row.last})
@@ -122,9 +125,9 @@ def get_global_totals():
 	if not branch:
 		return result
 	count = frappe.db.sql(
-		"""select count(*) from `tabSales Invoice` s where s.docstatus = 1 and s.is_return = 0 and s.status != 'Cancelled'
+		f"""select count(*) from `tabSales Invoice` s where s.docstatus = 1 and s.is_return = 0 and s.status != 'Cancelled'
 		and coalesce(s.custom_pos_opening_entry, '') != ''
-		and (s.set_warehouse = %(b)s or exists (select 1 from `tabSales Invoice Item` i where i.parent = s.name and i.warehouse = %(b)s))""",
+		and {OF_BRANCH}""",
 		{"b": branch},
 	)[0][0]
 	return _replace(result, {"total_invoices": count})
