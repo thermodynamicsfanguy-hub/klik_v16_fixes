@@ -72,6 +72,7 @@ def before_validate(doc, method=None):
 	# (partial returns recalculate, full returns copy the original's).
 	returned = abs(flt(doc.rounded_total) or flt(doc.grand_total))
 	_cap_refund(doc, returned - still_owed)
+	_cash_refund_needs_its_shift(doc)
 
 
 def validate(doc, method=None):
@@ -129,12 +130,33 @@ def _book_in_current_shift(doc):
 
 
 def _cap_refund(doc, refundable):
-	left = refundable
+	# a debt bigger than the return leaves nothing to give back: below zero would turn the sign over
+	left = max(flt(refundable), 0)
 	for row in doc.payments:
 		amount = min(abs(flt(row.amount)), left)
-		row.amount = -amount
-		row.base_amount = -amount * flt(doc.conversion_rate or 1)
+		row.amount = -amount if amount else 0
+		row.base_amount = -amount * flt(doc.conversion_rate or 1) if amount else 0
 		left -= amount
+
+
+def _cash_refund_needs_its_shift(doc):
+	"""Cash going back leaves a drawer: an open shift of the seller's, on the sale's branch.
+
+	KLiK's return copies the sale's shift, which may be closed or someone else's, and keeps it when the
+	seller has none. A refund by card or against the debt moves nothing in the drawer, and stays as it was."""
+	from klik_pos.api.sales_invoice import get_current_pos_opening_entry
+
+	if not any(
+		flt(row.amount) and frappe.get_cached_value("Mode of Payment", row.mode_of_payment, "type") == "Cash"
+		for row in doc.payments
+	):
+		return
+	shift = get_current_pos_opening_entry()
+	if not shift:
+		frappe.throw("افتح ورديتك قبل الإرجاع النقدي: النقد يخرج من درج الوردية.")
+	branch = lambda profile: frappe.db.get_value("POS Profile", profile, "warehouse")
+	if branch(frappe.db.get_value("POS Opening Entry", shift, "pos_profile")) != branch(doc.pos_profile):
+		frappe.throw("ورديتك مفتوحة على فرع آخر. أرجِع من فرع الفاتورة أو اختر الإرجاع على البطاقة.")
 
 
 @frappe.whitelist()
