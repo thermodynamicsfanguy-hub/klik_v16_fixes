@@ -12,7 +12,8 @@ app_license = "agpl-3.0"
 # its KLiK fixes then do nothing (each skips a missing klik_pos) and the ZATCA outage fix works alone.
 import importlib.util
 
-required_apps = ["klik_pos"] if importlib.util.find_spec("klik_pos") else []
+_WITH_KLIK = importlib.util.find_spec("klik_pos") is not None
+required_apps = ["klik_pos"] if _WITH_KLIK else []
 
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
@@ -165,6 +166,8 @@ required_apps = ["klik_pos"] if importlib.util.find_spec("klik_pos") else []
 
 # Credit invoices: returns credit the original and refund only what was paid (returns.py);
 # due dates follow the customer's payment terms (terms.py)
+# Registered only where klik_pos exists: returns.py imports it at module level, so on a site
+# without it every Sales Invoice would fail on that import.
 doc_events = {
 	"Sales Invoice": {
 		"before_validate": [
@@ -173,7 +176,7 @@ doc_events = {
 		],
 		"validate": "klik_v16_fixes.returns.validate",
 	},
-}
+} if _WITH_KLIK else {}
 
 # Scheduled Tasks
 # ---------------
@@ -228,7 +231,7 @@ override_whitelisted_methods = {
 	"klik_pos.api.sales_invoice.get_customer_invoices_for_return": "klik_v16_fixes.scope.get_customer_invoices_for_return",
 	"klik_pos.api.customer.get_customer_statistics": "klik_v16_fixes.scope.get_customer_statistics",
 	"klik_pos.api.customer.get_global_totals": "klik_v16_fixes.scope.get_global_totals",
-}
+} if _WITH_KLIK else {}
 #
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,
