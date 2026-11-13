@@ -8,7 +8,11 @@ app_license = "agpl-3.0"
 # Apps
 # ------------------
 
-required_apps = ["klik_pos"]
+# klik_pos is required where it exists. An image built without it can still install this app:
+# its KLiK fixes then do nothing (each skips a missing klik_pos) and the ZATCA outage fix works alone.
+import importlib.util
+
+required_apps = ["klik_pos"] if importlib.util.find_spec("klik_pos") else []
 
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
