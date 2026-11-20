@@ -101,12 +101,17 @@ def _as_cleared(response, payload):
 	return _Cleared(response, body)
 
 
+def _timeouts():
+	"""(connect, read): shorter while a seller waits at the till (store_core.zatca_background.clear_now)."""
+	return frappe.flags.get("seeve_zatca_timeouts") or (CONNECT_TIMEOUT, TIMEOUT)
+
+
 def _post(url, config, payload, module):
 	started = time.time()
 	response = requests.post(
 		url, headers=module.get_clearence_headers(),
 		auth=HTTPBasicAuth(config["production_csid"].binary_security_token, config["production_csid"].secret),
-		json=payload, timeout=(CONNECT_TIMEOUT, TIMEOUT),
+		json=payload, timeout=_timeouts(),
 	)
 	return response, {"duration": time.time() - started}
 
@@ -144,7 +149,7 @@ def apply():
 			if attempt:
 				# a seller waiting at the till gets a shorter budget (seeve_flow.api.invoice, store_core
 				# zatca_background phase 2); the queue takes over what is left
-				if time.time() - started + RESEND_PAUSE + ATTEMPT_MAX > (frappe.flags.get("seeve_zatca_budget") or BUDGET):
+				if time.time() - started + RESEND_PAUSE + sum(_timeouts()) > (frappe.flags.get("seeve_zatca_budget") or BUDGET):
 					break  # the till's device row is held the whole time: no resend past the budget
 				time.sleep(RESEND_PAUSE)
 			try:
