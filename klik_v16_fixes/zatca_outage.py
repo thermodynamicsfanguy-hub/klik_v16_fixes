@@ -70,6 +70,7 @@ def apply():
 		try:
 			return _post(config["zatca_environment"].invoice_clearance_api, config, payload, module)
 		except requests.exceptions.RequestException:
+			frappe.local.message_log = []  # the app said «sent to ZATCA» before sending: nothing was
 			frappe.throw(OUTAGE_MESSAGE)
 
 	def on_submit(doc, method=None):
