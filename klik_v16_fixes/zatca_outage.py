@@ -142,7 +142,9 @@ def apply():
 		seen = []  # what each attempt got, for the log
 		for attempt in range(1 + RESENDS):
 			if attempt:
-				if time.time() - started + RESEND_PAUSE + ATTEMPT_MAX > BUDGET:
+				# a seller waiting at the till gets a shorter budget (seeve_flow.api.invoice, store_core
+				# zatca_background phase 2); the queue takes over what is left
+				if time.time() - started + RESEND_PAUSE + ATTEMPT_MAX > (frappe.flags.get("seeve_zatca_budget") or BUDGET):
 					break  # the till's device row is held the whole time: no resend past the budget
 				time.sleep(RESEND_PAUSE)
 			try:
