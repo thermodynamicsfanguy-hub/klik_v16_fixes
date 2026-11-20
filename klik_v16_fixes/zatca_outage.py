@@ -12,12 +12,14 @@ outage (no connection, or the gateway answering 5xx) marks the invoice PENDING t
 does, and whatever retries PENDING invoices calls generate_einvoice again as the app does.
 """
 
+import base64
 import json
 import time
 
 import frappe
 import requests
 from requests.auth import HTTPBasicAuth
+from urllib3.exceptions import NewConnectionError
 
 MODULE = "zatca_integration.clearence_util"
 TIMEOUT = 20
@@ -39,6 +41,12 @@ UNKNOWN_MESSAGE = (
 # is sent again (2026-11-20). An error before anything left (no connection, name, TLS) is the outage.
 RESENDS = 2
 RESEND_PAUSE = 2
+# The sale holds its till's device row (FOR UPDATE) while it waits: a second cashier on that till waits too
+# (innodb_lock_wait_timeout: 50 s on storelab, 15 s on the shared host, then retry_busy). So one budget for
+# all the attempts, and a connect timeout apart from the read timeout (requests applies each per phase).
+CONNECT_TIMEOUT = 5
+ATTEMPT_MAX = CONNECT_TIMEOUT + TIMEOUT
+BUDGET = 50
 
 
 class ReportingDeferred(Exception):
@@ -46,40 +54,51 @@ class ReportingDeferred(Exception):
 
 
 def _not_sent(error):
-	"""True when the request cannot have reached ZATCA."""
-	if isinstance(error, (requests.exceptions.ConnectTimeout, requests.exceptions.SSLError)):
+	"""True when the request cannot have reached ZATCA: no connection was made (timeout, refused, no such
+	host). A TLS error is not proof (urllib3 raises one too when the stream breaks while reading the answer),
+	so it is resent (review 2026-11-20)."""
+	if isinstance(error, requests.exceptions.ConnectTimeout):
 		return True
-	if isinstance(error, requests.exceptions.ConnectionError) and not isinstance(error, requests.exceptions.Timeout):
-		from urllib3.exceptions import NewConnectionError
-
+	if isinstance(error, requests.exceptions.SSLError) or isinstance(error, requests.exceptions.Timeout):
+		return False
+	if isinstance(error, requests.exceptions.ConnectionError):
 		reason = getattr(error.args[0], "reason", None) if error.args else None
-		return isinstance(reason, NewConnectionError)  # refused or no such host (NameResolutionError)
+		return isinstance(reason, NewConnectionError)  # refused, or no such host (NameResolutionError)
 	return False
 
 
 class _Cleared:
-	"""ZATCA's 208 «previously submitted», handed to the app as the 200 «CLEARED» it stands for."""
+	"""ZATCA's 208 «previously submitted», handed to the app as the 200 «CLEARED» it stands for. ZATCA's own
+	results stay in the body (seeve_zatca_original) for Zatca Transactions; its errors are left out of the
+	app's copy because display_error_ui throws on any error message."""
 
 	status_code = 200
 
 	def __init__(self, response, body):
-		results = {"status": "PASS", "errorMessages": [], "warningMessages": [], "infoMessages": [{
-			"type": "INFO", "code": "INVOICE_HASH_PREVIOUSLY_SUBMITTED", "status": "PASS",
-			"message": "ZATCA 208: cleared on an earlier send whose answer was lost"}]}
-		self._body = dict(body, clearanceStatus="CLEARED", validationResults=results, seeve_zatca_answer=208)
+		original = body.get("validationResults") or {}
+		results = {"status": "PASS", "errorMessages": [], "warningMessages": original.get("warningMessages") or [],
+			"infoMessages": [{"type": "INFO", "code": "INVOICE_HASH_PREVIOUSLY_SUBMITTED", "status": "PASS",
+				"message": "ZATCA 208: cleared on an earlier send whose answer was lost"}]}
+		self._body = dict(body, clearanceStatus="CLEARED", validationResults=results, seeve_zatca_answer=208,
+			seeve_zatca_original=original)
 		self.text = response.text
 
 	def json(self):
 		return self._body
 
 
-def _as_cleared(response):
-	"""A 208 carrying the cleared invoice, as a 200; None when it carries none (nothing to print)."""
+def _as_cleared(response, payload):
+	"""A 208 whose cleared invoice is this very invoice, as a 200; None otherwise (nothing safe to print)."""
 	try:
 		body = response.json()
+		if not isinstance(body, dict) or body.get("clearanceStatus") not in (None, "", "CLEARED"):
+			return None
+		xml = base64.b64decode(body.get("clearedInvoice") or "", validate=True).decode("utf-8")
 	except Exception:
 		return None
-	return _Cleared(response, body) if body.get("clearedInvoice") else None
+	if not xml or payload.get("uuid") not in xml:
+		return None  # not the invoice we sent
+	return _Cleared(response, body)
 
 
 def _post(url, config, payload, module):
@@ -87,7 +106,7 @@ def _post(url, config, payload, module):
 	response = requests.post(
 		url, headers=module.get_clearence_headers(),
 		auth=HTTPBasicAuth(config["production_csid"].binary_security_token, config["production_csid"].secret),
-		json=payload, timeout=TIMEOUT,
+		json=payload, timeout=(CONNECT_TIMEOUT, TIMEOUT),
 	)
 	return response, {"duration": time.time() - started}
 
@@ -119,29 +138,39 @@ def apply():
 
 	def submit_clearance(config, payload):
 		url = config["zatca_environment"].invoice_clearance_api
+		started = time.time()
+		seen = []  # what each attempt got, for the log
 		for attempt in range(1 + RESENDS):
 			if attempt:
+				if time.time() - started + RESEND_PAUSE + ATTEMPT_MAX > BUDGET:
+					break  # the till's device row is held the whole time: no resend past the budget
 				time.sleep(RESEND_PAUSE)
 			try:
 				response, took = _post(url, config, payload, module)
 			except requests.exceptions.RequestException as error:
+				seen.append(type(error).__name__)
 				if attempt == 0 and _not_sent(error):
 					frappe.local.message_log = []  # the app said «sent to ZATCA» before sending: nothing was
 					frappe.throw(OUTAGE_MESSAGE)
 				continue  # it may be at ZATCA: the same payload again, never a new signature
-			if response.status_code >= 500:
-				continue  # a gateway error may follow a clearance ZATCA kept: the same payload again
+			seen.append(response.status_code)
+			took = {"duration": time.time() - started}
 			if response.status_code == 208:
-				response = _as_cleared(response)
-				if response is None:
-					break
-			if attempt:
-				frappe.logger("zatca").info(f"seeve clearance answered {response.status_code} on resend {attempt} "
-					f"(uuid {payload.get('uuid')})")
-			return response, took
-		frappe.logger("zatca").error("seeve clearance: answer unknown after resends; ZATCA may hold it. " + json.dumps({
-			"device": frappe.flags.get("seeve_zatca_device"), "uuid": payload.get("uuid"),
-			"invoiceHash": payload.get("invoiceHash"), "payload": payload}))
+				cleared = _as_cleared(response, payload)
+				if cleared is not None:
+					return cleared, took
+				break  # a 208 we cannot use: unknown, never the app's FAILED path
+			if attempt == 0 and response.status_code < 500:
+				return response, took  # the first answer, whatever it is, is the app's to handle as before
+			if response.status_code in (200, 202):
+				frappe.logger("zatca").info(f"seeve clearance {seen} (uuid {payload.get('uuid')})")
+				return response, took
+			# a resend answered 4xx (409, 429, a «duplicate» 400 …) or any 5xx: the first may still be at
+			# ZATCA. Handing it to the app would commit FAILED inside the sale (update_status_on_error) and
+			# tell the seller to fix and resubmit, i.e. sign a second invoice (review 2026-11-20).
+		frappe.logger("zatca").error("seeve clearance: answer unknown; ZATCA may hold it. " + json.dumps({
+			"attempts": seen, "device": frappe.flags.get("seeve_zatca_device"), "uuid": payload.get("uuid"),
+			"invoiceHash": payload.get("invoiceHash"), "payload": payload}, default=str))
 		frappe.local.message_log = []
 		frappe.throw(UNKNOWN_MESSAGE)
 
